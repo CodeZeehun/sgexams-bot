@@ -3,14 +3,13 @@
 import chai from 'chai';
 import { Permissions } from 'discord.js';
 import { Command } from '../../main/command/Command';
-import { Server } from '../../main/storage/Server';
 import { CommandResult } from '../../main/command/classes/CommandResult';
 import { CommandArgs } from '../../main/command/classes/CommandArgs';
 
 chai.should();
 
 class CommandStub extends Command {
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         throw new Error('Method not implemented.');
     }
 }

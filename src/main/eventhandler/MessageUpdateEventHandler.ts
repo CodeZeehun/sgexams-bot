@@ -1,46 +1,26 @@
-import { Message } from 'discord.js';
-import { EventHandler } from './EventHandler';
-import { Storage } from '../storage/Storage';
-import { MessageChecker } from '../modules/messagechecker/MessageChecker';
-import { MessageResponse } from '../modules/messagechecker/response/MessageResponse';
+import { MessageEventHandler } from './MessageEventHandler';
 
-export class MessageUpdateEventHandler extends EventHandler {
-    public static EVENT_NAME = 'messageUpdate';
-
-    protected message: Message;
-
-    public constructor(storage: Storage, message: Message) {
-        super(storage);
-        this.message = message;
-    }
-
+export class MessageUpdateEventHandler extends MessageEventHandler {
     /**
-     * Handles when message is editted
+     * Handles when message is edited
      *
      * @returns Promise
      */
     public async handleEvent(): Promise<void> {
-        // If it is a DM, ignore.
-        if (this.message.guild === null) return;
-        // If it's a bot, ignore :)
-        if (this.message.author.bot) return;
+        try {
+            // Handle partial message
+            await this.handlePartial();
+            // If it is a DM, ignore.
+            if (this.message.guild === null) return;
+            // If it's a bot, ignore :)
+            // author can be null for some reason
+            if (this.message.author && this.message.author.bot) return;
 
-        const server = this.getServer(this.message.guild.id.toString());
-
-        // Retrieve settings
-        const bannedWords = server.messageCheckerSettings.getBannedWords();
-        const reportingChannelId = server.messageCheckerSettings.getReportingChannelId();
-        const responseMessage = server.messageCheckerSettings.getResponseMessage();
-        const deleteMessage = server.messageCheckerSettings.getDeleteMessage();
-
-        // Check updated message
-        const result
-            = await new MessageChecker().checkMessage(this.message.content, bannedWords);
-        if (result.guilty) {
-            new MessageResponse(this.message)
-                .sendReport(result, reportingChannelId)
-                .sendMessageToUser(responseMessage)
-                .deleteMessage(deleteMessage);
+            // Check updated message
+            const server = this.getServer(this.message.guild.id);
+            await this.handleMessageCheck(server);
+        } catch (err) {
+            this.handleError(err);
         }
     }
 }

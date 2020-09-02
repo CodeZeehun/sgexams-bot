@@ -1,4 +1,4 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
@@ -8,8 +8,8 @@ export class MsgCheckerListWordsCommand extends Command {
 
     public static EMBED_TITLE = 'Blacklisted Words';
 
-    /** SaveServer: false, CheckMessage: true */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false, true);
+    /** CheckMessage: true */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -20,12 +20,12 @@ export class MsgCheckerListWordsCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
@@ -33,23 +33,27 @@ export class MsgCheckerListWordsCommand extends Command {
         const bannedWords = server.messageCheckerSettings.getBannedWords();
         bannedWords.sort();
 
-        const embed = new RichEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
+        let embed: MessageEmbed;
         if (bannedWords.length === 0) {
-            embed.addField(
+            embed = this.generateGenericEmbed(
                 MsgCheckerListWordsCommand.EMBED_TITLE,
                 MsgCheckerListWordsCommand.NO_WORDS_FOUND,
+                MsgCheckerListWordsCommand.EMBED_DEFAULT_COLOUR,
             );
         } else {
             let output = '';
             for (const word of bannedWords) {
                 output += `${word}\n`;
             }
-            embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-            embed.addField(MsgCheckerListWordsCommand.EMBED_TITLE, output);
+            embed = this.generateGenericEmbed(
+                MsgCheckerListWordsCommand.EMBED_TITLE,
+                output,
+                MsgCheckerListWordsCommand.EMBED_DEFAULT_COLOUR,
+            );
         }
 
-        // Execute Command
-        messageReply(embed);
+        // Send reply
+        await messageReply(embed);
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 }

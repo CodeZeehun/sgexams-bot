@@ -1,17 +1,17 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
 
 export class MsgCheckerSetResponseMessageCommand extends Command {
-    public static EMBED_TITLE = 'Reponse Message';
+    public static EMBED_TITLE = 'Message Checker Response Message';
 
     public static MESSAGE_RESETTED = 'Response Message has been resetted because there was no arguments.';
 
     public static RESPONSE_MESSAGE_CANNOT_BE_UNDEFINED = 'Reponse Message cannot be undefined!';
 
-    /** SaveServer: true, CheckMessage: true */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true, true);
+    /** CheckMessage: true */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -29,22 +29,25 @@ export class MsgCheckerSetResponseMessageCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
-        let embed: RichEmbed;
+        let embed: MessageEmbed;
 
         // Check if no args
         if (this.args.length === 0) {
-            server.messageCheckerSettings.setResponseMessage(null);
+            server.messageCheckerSettings.setResponseMessage(
+                server.serverId,
+                null,
+            );
             embed = this.generateResetEmbed();
-            messageReply(embed);
+            await messageReply(embed);
             return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
         }
 
@@ -53,9 +56,12 @@ export class MsgCheckerSetResponseMessageCommand extends Command {
             msg += this.args[i];
             msg += (i !== this.args.length - 1) ? ' ' : '';
         }
-        server.messageCheckerSettings.setResponseMessage(msg);
+        server.messageCheckerSettings.setResponseMessage(
+            server.serverId,
+            msg,
+        );
         embed = this.generateValidEmbed(msg);
-        messageReply(embed);
+        await messageReply(embed);
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 
@@ -65,13 +71,12 @@ export class MsgCheckerSetResponseMessageCommand extends Command {
      * @returns RichEmbed
      */
     // eslint-disable-next-line class-methods-use-this
-    private generateResetEmbed(): RichEmbed {
-        const embed = new RichEmbed();
-        embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-        embed.addField(MsgCheckerSetResponseMessageCommand.EMBED_TITLE,
-            MsgCheckerSetResponseMessageCommand.MESSAGE_RESETTED);
-
-        return embed;
+    private generateResetEmbed(): MessageEmbed {
+        return this.generateGenericEmbed(
+            MsgCheckerSetResponseMessageCommand.EMBED_TITLE,
+            MsgCheckerSetResponseMessageCommand.MESSAGE_RESETTED,
+            MsgCheckerSetResponseMessageCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 
     /**
@@ -81,12 +86,11 @@ export class MsgCheckerSetResponseMessageCommand extends Command {
      * @returns RichEmbed
      */
     // eslint-disable-next-line class-methods-use-this
-    private generateValidEmbed(msg: string): RichEmbed {
-        const embed = new RichEmbed();
-        embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-        const responseMessage = `Response Message set to ${msg}`;
-        embed.addField(MsgCheckerSetResponseMessageCommand.EMBED_TITLE, responseMessage);
-
-        return embed;
+    private generateValidEmbed(msg: string): MessageEmbed {
+        return this.generateGenericEmbed(
+            MsgCheckerSetResponseMessageCommand.EMBED_TITLE,
+            `Response Message set to ${msg}`,
+            MsgCheckerSetResponseMessageCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 }

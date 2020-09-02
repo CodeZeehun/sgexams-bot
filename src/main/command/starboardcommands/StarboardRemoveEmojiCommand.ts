@@ -1,6 +1,5 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
-import { Server } from '../../storage/Server';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
 
@@ -9,10 +8,10 @@ export class StarboardRemoveEmojiCommand extends Command {
 
     public static EMBED_TITLE = 'Starboard Emoji';
 
-    /** SaveServer: true, CheckMessage: false */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true, false);
+    /** CheckMessage: false */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false);
 
-    private COMMAND_UNSUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false, true);
+    private COMMAND_UNSUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -30,70 +29,54 @@ export class StarboardRemoveEmojiCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
-        const { starboardSettings } = server;
+        const { serverId, starboardSettings } = server;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
         // Check if there's arguments
-        const embed = new RichEmbed();
+        let embed: MessageEmbed;
         if (this.args.length === 0) {
-            embed.setColor(Command.EMBED_ERROR_COLOUR);
-            embed.addField(
+            embed = this.generateGenericEmbed(
                 StarboardRemoveEmojiCommand.ERROR_EMBED_TITLE,
                 StarboardRemoveEmojiCommand.NO_ARGUMENTS,
+                StarboardRemoveEmojiCommand.EMBED_ERROR_COLOUR,
             );
-            messageReply(embed);
+            await messageReply(embed);
             return this.COMMAND_UNSUCCESSFUL_COMMANDRESULT;
         }
 
         // Execute
         const emojiId = this.args[0];
         const emoji = starboardSettings.getEmojiById(emojiId);
-        const successfullyRemoved = starboardSettings.removeEmojiById(emojiId);
+        const successfullyRemoved = starboardSettings.removeEmojiById(
+            serverId,
+            emojiId,
+        );
 
         if (successfullyRemoved) {
-            embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-            embed.addField(StarboardRemoveEmojiCommand.EMBED_TITLE, `✅Removed Emoji: <:${emoji!.name}:${emoji!.id}>`);
-            // Send output
-            messageReply(embed);
-            return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
-        }
-            embed.setColor(Command.EMBED_ERROR_COLOUR);
-            embed.addField(
+            embed = this.generateGenericEmbed(
                 StarboardRemoveEmojiCommand.EMBED_TITLE,
-                StarboardRemoveEmojiCommand.MAYBE_EMOJI_NOT_INSIDE,
+                `Removed Emoji: <:${emoji!.name}:${emoji!.id}>`,
+                StarboardRemoveEmojiCommand.EMBED_DEFAULT_COLOUR,
             );
             // Send output
-            messageReply(embed);
-            return this.COMMAND_UNSUCCESSFUL_COMMANDRESULT;
-    }
-
-    /**
-     * Changed the settings of server object
-     *
-     * @param  {Server} server the discord server
-     * @param  {string[]} wordsRemoved Words successfully removed
-     * @param  {string[]} wordsNotRemoved Words unsuccessfully removed
-     * @returns void
-     */
-    public changeServerSettings(server: Server,
-                                wordsRemoved: string[],
-                                wordsNotRemoved: string[]): void {
-        const words = this.args;
-        for (let word of words) {
-            // Make word lowercase
-            word = word.toLowerCase();
-            if (server.messageCheckerSettings.removeBannedWord(word)) {
-                wordsRemoved.push(word);
-            } else {
-                wordsNotRemoved.push(word);
-            }
+            await messageReply(embed);
+            return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
         }
+
+        embed = this.generateGenericEmbed(
+            StarboardRemoveEmojiCommand.EMBED_TITLE,
+            StarboardRemoveEmojiCommand.MAYBE_EMOJI_NOT_INSIDE,
+            StarboardRemoveEmojiCommand.EMBED_DEFAULT_COLOUR,
+        );
+        // Send output
+        await messageReply(embed);
+        return this.COMMAND_UNSUCCESSFUL_COMMANDRESULT;
     }
 }

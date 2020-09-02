@@ -1,18 +1,18 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { Server } from '../../storage/Server';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
 
 export class MsgCheckerAddWordCommand extends Command {
-    public static ADDED_WORDS = '✅Added Words(s):';
+    public static ADDED_WORDS = 'Added Words(s):';
 
     public static MAYBE_WORDS_ALREADY_ADDED = 'Perhaps those word(s) are already added?';
 
-    public static UNABLE_TO_ADD_WORDS = '❌Unable To Add:';
+    public static UNABLE_TO_ADD_WORDS = 'Unable To Add:';
 
-    /** SaveServer: true, CheckMessage: false */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true, false);
+    /** CheckMessage: false */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -30,25 +30,23 @@ export class MsgCheckerAddWordCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
         // Execute
-        const wordsAdded: string[] = [];
-        const wordsNotAdded: string[] = [];
-        this.changeServerSettings(server, wordsAdded, wordsNotAdded);
+        const { wordsAdded, wordsNotAdded } = this.changeServerSettings(server);
 
         // Generate output embed
         const embed = this.generateEmbed(wordsAdded, wordsNotAdded);
 
         // Send output
-        messageReply(embed);
+        await messageReply(embed);
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 
@@ -60,9 +58,9 @@ export class MsgCheckerAddWordCommand extends Command {
      * @returns RichEmbed
      */
     public generateEmbed(wordsAdded: string[],
-        wordsNotAdded: string[]): RichEmbed {
+                         wordsNotAdded: string[]): MessageEmbed {
         const words = this.args;
-        let embed = new RichEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
+        let embed = new MessageEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
         if (wordsAdded.length !== 0) {
             let output = '';
             for (let i = 0; i < wordsAdded.length; i++) {
@@ -83,7 +81,7 @@ export class MsgCheckerAddWordCommand extends Command {
         }
 
         if (words.length === 0) {
-            embed = new RichEmbed()
+            embed = new MessageEmbed()
                 .setColor(Command.EMBED_ERROR_COLOUR)
                 .addField(
                     MsgCheckerAddWordCommand.ERROR_EMBED_TITLE,
@@ -98,22 +96,13 @@ export class MsgCheckerAddWordCommand extends Command {
      * Changed the settings of server object
      *
      * @param  {Server} server the discord server
-     * @param  {string[]} wordsAdded Words successfully added
-     * @param  {string[]} wordsNotAdded Words unsuccessfully added
-     * @returns void
+     * @returns any An object comprising 2 lists, one of the words added and
+     *              one of those not added
      */
-    public changeServerSettings(server: Server,
-                                wordsAdded: string[],
-                                wordsNotAdded: string[]): void {
-        const words = this.args;
-        for (let word of words) {
-            // Make word lowercase
-            word = word.toLowerCase();
-            if (server.messageCheckerSettings.addbannedWord(word)) {
-                wordsAdded.push(word);
-            } else {
-                wordsNotAdded.push(word);
-            }
-        }
+    public changeServerSettings(server: Server): { wordsAdded: string[]; wordsNotAdded: string[]} {
+        const { serverId } = server;
+        const words = this.args.map((word) => word.toLowerCase());
+        const res = server.messageCheckerSettings.addBannedWords(serverId, words);
+        return res;
     }
 }

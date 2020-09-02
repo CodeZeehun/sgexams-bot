@@ -1,6 +1,7 @@
 import {
- Guild, Client, TextChannel, Collection, Message,
+    Guild, Client, TextChannel, Collection, Message,
 } from 'discord.js';
+import log from 'loglevel';
 import { Storage } from './Storage';
 
 export class StarboardServerCache {
@@ -114,7 +115,7 @@ export abstract class StarboardCache {
 
         // Check all the guilds that the bot is in
         const { guilds } = bot;
-        guilds.forEach((guild: Guild): void => {
+        guilds.cache.forEach((guild: Guild): void => {
             const { id } = guild;
             if (!storage.servers.has(id)) {
                 return;
@@ -132,11 +133,11 @@ export abstract class StarboardCache {
             // Check if starboard channelId or channel does not exist
             const starboardCache = starboardMessageCache.get(id)!;
             const channelId = starboardSettings.getChannel()!;
-            if (!guild.channels.has(channelId) || channelId === null) return;
+            if (!guild.channels.resolve(channelId) || channelId === null) return;
 
             // Add starboard IDs to cache
-            const channel = guild.channels.get(channelId);
-            (channel as TextChannel).fetchMessages({ limit: 100 })
+            const channel = guild.channels.resolve(channelId);
+            (channel as TextChannel).messages.fetch({ limit: 100 })
                 .then((messages: Collection<string, Message>): void => {
                     for (const message of messages.array()) {
                         // Assuming message id is the last index
@@ -145,6 +146,9 @@ export abstract class StarboardCache {
                         const msgId = splittedMsg[length - 1];
                         starboardCache.addToCache(msgId, message.id);
                     }
+                })
+                .catch((err) => {
+                    log.info(`${err}: Unable to fetch messages in ${guild.id}, Starboard channel - ${channelId}`);
                 });
         });
     }

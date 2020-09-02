@@ -1,4 +1,4 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
@@ -8,8 +8,8 @@ export class StarboardGetChannelCommand extends Command {
 
     public static EMBED_TITLE = 'Starboard Channel';
 
-    /** SaveServer: false, CheckMessage: true */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false, true);
+    /** CheckMessage: true */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -20,12 +20,12 @@ export class StarboardGetChannelCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
@@ -34,11 +34,11 @@ export class StarboardGetChannelCommand extends Command {
 
         // Check if channel is set
         if (channelId === null) {
-            messageReply(this.generateNotSetEmbed());
+            await messageReply(this.generateNotSetEmbed());
             return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
         }
 
-        messageReply(this.generateValidEmbed(channelId));
+        await messageReply(this.generateValidEmbed(channelId));
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 
@@ -47,14 +47,12 @@ export class StarboardGetChannelCommand extends Command {
      *
      * @returns RichEmbed
      */
-    // eslint-disable-next-line class-methods-use-this
-    private generateNotSetEmbed(): RichEmbed {
-        const embed = new RichEmbed();
-        embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-        embed.addField(StarboardGetChannelCommand.EMBED_TITLE,
-            StarboardGetChannelCommand.CHANNEL_NOT_SET);
-
-        return embed;
+    private generateNotSetEmbed(): MessageEmbed {
+        return this.generateGenericEmbed(
+            StarboardGetChannelCommand.EMBED_TITLE,
+            StarboardGetChannelCommand.CHANNEL_NOT_SET,
+            StarboardGetChannelCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 
     /**
@@ -63,13 +61,11 @@ export class StarboardGetChannelCommand extends Command {
      * @param  {string} channelId
      * @returns RichEmbed
      */
-    // eslint-disable-next-line class-methods-use-this
-    private generateValidEmbed(channelId: string): RichEmbed {
-        const embed = new RichEmbed();
-        embed.setColor(Command.EMBED_DEFAULT_COLOUR);
-        const msg = `Starboard Channel is currently set to <#${channelId}>.`;
-        embed.addField(StarboardGetChannelCommand.EMBED_TITLE, msg);
-
-        return embed;
+    private generateValidEmbed(channelId: string): MessageEmbed {
+        return this.generateGenericEmbed(
+            StarboardGetChannelCommand.EMBED_TITLE,
+            `Starboard Channel is currently set to <#${channelId}>.`,
+            StarboardGetChannelCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 }

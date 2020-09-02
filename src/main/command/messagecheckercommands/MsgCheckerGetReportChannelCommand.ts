@@ -1,4 +1,4 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
@@ -6,10 +6,10 @@ import { CommandArgs } from '../classes/CommandArgs';
 export class MsgCheckerGetReportChannelCommand extends Command {
     public static CHANNEL_NOT_SET = 'There is no reporting channel set for this server.';
 
-    public static EMBED_TITLE = 'Reporting Channel';
+    public static EMBED_TITLE = 'Message Checker Reporting Channel';
 
-    /** SaveServer: false, CheckMessage: true */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false, true);
+    /** CheckMessage: true */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -20,29 +20,32 @@ export class MsgCheckerGetReportChannelCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
-        // Generate embed
+        // Generate and send embed
         const channelId = server.messageCheckerSettings.getReportingChannelId();
-        const embed = new RichEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
+        let embed: MessageEmbed;
         if (channelId === null) {
-            embed.addField(MsgCheckerGetReportChannelCommand.EMBED_TITLE,
-                MsgCheckerGetReportChannelCommand.CHANNEL_NOT_SET);
+            embed = this.generateGenericEmbed(
+                MsgCheckerGetReportChannelCommand.EMBED_TITLE,
+                MsgCheckerGetReportChannelCommand.CHANNEL_NOT_SET,
+                MsgCheckerGetReportChannelCommand.EMBED_DEFAULT_COLOUR,
+            );
         } else {
-            const msg = `Reporting Channel is currently set to <#${channelId}>.`;
-            embed.addField(MsgCheckerGetReportChannelCommand.EMBED_TITLE, msg);
+            embed = this.generateGenericEmbed(
+                MsgCheckerGetReportChannelCommand.EMBED_TITLE,
+                `Reporting Channel is currently set to <#${channelId}>.`,
+                MsgCheckerGetReportChannelCommand.EMBED_DEFAULT_COLOUR,
+            );
         }
-
-        // Execute
-        messageReply(embed);
-
+        await messageReply(embed);
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 }

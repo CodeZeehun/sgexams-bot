@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle, no-unused-expressions */
 import { should } from 'chai';
 import {
- RichEmbed, Permissions, Channel, Collection, Client,
+    MessageEmbed, Permissions,
 } from 'discord.js';
 import { MsgCheckerSetResponseMessageCommand } from '../../../main/command/messagecheckercommands/MsgCheckerSetResponseMessageCommand';
 import { Command } from '../../../main/command/Command';
@@ -10,11 +10,12 @@ import { MessageCheckerSettings } from '../../../main/storage/MessageCheckerSett
 import { Server } from '../../../main/storage/Server';
 import { StarboardSettings } from '../../../main/storage/StarboardSettings';
 import { CommandArgs } from '../../../main/command/classes/CommandArgs';
+import { deleteDbFile, TEST_STORAGE_PATH, compareWithReserialisedStorage } from '../../TestsHelper';
+import { DatabaseConnection } from '../../../main/DatabaseConnection';
+import { Storage } from '../../../main/storage/Storage';
 
 should();
 
-let server: Server;
-let command: MsgCheckerSetResponseMessageCommand;
 const adminPerms = new Permissions(['ADMINISTRATOR']);
 const EMBED_DEFAULT_COLOUR = Command.EMBED_DEFAULT_COLOUR.replace(/#/g, '');
 const EMBED_ERROR_COLOUR = Command.EMBED_ERROR_COLOUR.replace(/#/g, '');
@@ -24,18 +25,31 @@ const { MESSAGE_RESETTED } = MsgCheckerSetResponseMessageCommand;
 const { EMBED_TITLE } = MsgCheckerSetResponseMessageCommand;
 const { RESPONSE_MESSAGE_CANNOT_BE_UNDEFINED } = MsgCheckerSetResponseMessageCommand;
 
-beforeEach((): void => {
-    server = new Server(
-        '123',
-        new MessageCheckerSettings(null, null, null, null),
-        new StarboardSettings(null, null, null),
-);
-});
-
 describe('MsgCheckerSetResponseMessageCommand test suite', (): void => {
-    it('No permission check', (): void => {
+    // Set storage path and remove testing.db
+    before((): void => {
+        deleteDbFile();
+        DatabaseConnection.setStoragePath(TEST_STORAGE_PATH);
+    });
+
+    // Before each set up new instances
+    let server: Server;
+    let command: MsgCheckerSetResponseMessageCommand;
+    let storage: Storage;
+    const serverId = '69420';
+    beforeEach((): void => {
+        storage = new Storage().loadServers();
+        storage.initNewServer(serverId);
+        server = storage.servers.get(serverId)!;
+    });
+
+    afterEach((): void => {
+        deleteDbFile();
+    });
+
+    it('No permission check', async (): Promise<void> => {
         command = new MsgCheckerSetResponseMessageCommand([]);
-        const checkEmbed = (embed: RichEmbed): void => {
+        const checkEmbed = (embed: MessageEmbed): void => {
             embed.color!.toString(16).should.equals(Command.EMBED_ERROR_COLOUR);
             embed.fields!.length.should.be.equals(1);
 
@@ -44,18 +58,22 @@ describe('MsgCheckerSetResponseMessageCommand test suite', (): void => {
             field.value.should.equals(Command.NO_PERMISSIONS_MSG);
         };
 
-        const commandArgs = new CommandArgs(server, new Permissions([]), checkEmbed);
-        const commandResult = command.execute(commandArgs);
+        const commandArgs: CommandArgs = {
+            server,
+            memberPerms: new Permissions([]),
+            messageReply: checkEmbed,
+        };
+        const commandResult = await command.execute(commandArgs);
 
         // Check command result
         commandResult.shouldCheckMessage.should.be.true;
-        commandResult.shouldSaveServers.should.be.false;
     });
-    it('Reset response message', (): void => {
-        command = new MsgCheckerSetResponseMessageCommand([]);
-        server.messageCheckerSettings.setResponseMessage('XD');
 
-        const checkEmbed = (embed: RichEmbed): void => {
+    it('Reset response message', async (): Promise<void> => {
+        command = new MsgCheckerSetResponseMessageCommand([]);
+        server.messageCheckerSettings.setResponseMessage(serverId, 'XD');
+
+        const checkEmbed = (embed: MessageEmbed): void => {
             embed.color!.toString(16).should.equals(EMBED_DEFAULT_COLOUR);
             embed.fields!.length.should.equals(1);
             const field = embed.fields![0];
@@ -63,22 +81,27 @@ describe('MsgCheckerSetResponseMessageCommand test suite', (): void => {
             field.value.should.equals(MESSAGE_RESETTED);
         };
 
-        const commandArgs = new CommandArgs(server, adminPerms, checkEmbed);
-        const commandResult = command.execute(commandArgs);
+        const commandArgs: CommandArgs = {
+            server,
+            memberPerms: adminPerms,
+            messageReply: checkEmbed,
+        };
+        const commandResult = await command.execute(commandArgs);
 
         // Check command result
         commandResult.shouldCheckMessage.should.be.true;
-        commandResult.shouldSaveServers.should.be.true;
 
         // Check server
         (server.messageCheckerSettings.getResponseMessage() === null).should.be.true;
+        compareWithReserialisedStorage(storage).should.be.true;
     });
-    it('Valid channelid', (): void => {
+
+    it('Valid channelid', async (): Promise<void> => {
         const responseMessage = 'Hey there';
         const msg = `Response Message set to ${responseMessage}`;
         command = new MsgCheckerSetResponseMessageCommand(responseMessage.split(' '));
 
-        const checkEmbed = (embed: RichEmbed): void => {
+        const checkEmbed = (embed: MessageEmbed): void => {
             embed.color!.toString(16).should.equals(EMBED_DEFAULT_COLOUR);
             embed.fields!.length.should.equals(1);
             const field = embed.fields![0];
@@ -86,14 +109,18 @@ describe('MsgCheckerSetResponseMessageCommand test suite', (): void => {
             field.value.should.equals(msg);
         };
 
-        const commandArgs = new CommandArgs(server, adminPerms, checkEmbed);
-        const commandResult = command.execute(commandArgs);
+        const commandArgs: CommandArgs = {
+            server,
+            memberPerms: adminPerms,
+            messageReply: checkEmbed,
+        };
+        const commandResult = await command.execute(commandArgs);
 
         // Check command result
         commandResult.shouldCheckMessage.should.be.true;
-        commandResult.shouldSaveServers.should.be.true;
 
         // Check server
         server.messageCheckerSettings.getResponseMessage()!.should.equals(responseMessage);
+        compareWithReserialisedStorage(storage).should.be.true;
     });
 });

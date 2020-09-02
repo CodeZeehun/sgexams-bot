@@ -1,4 +1,4 @@
-import { Permissions, RichEmbed } from 'discord.js';
+import { Permissions, MessageEmbed } from 'discord.js';
 import { Command } from '../Command';
 import { CommandResult } from '../classes/CommandResult';
 import { CommandArgs } from '../classes/CommandArgs';
@@ -8,8 +8,8 @@ export class StarboardGetThresholdCommand extends Command {
 
     public static EMBED_TITLE = 'Starboard Threshold';
 
-    /** SaveServer: false, CheckMessage: true */
-    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(false, true);
+    /** CheckMessage: true */
+    private COMMAND_SUCCESSFUL_COMMANDRESULT: CommandResult = new CommandResult(true);
 
     private permissions = new Permissions(['KICK_MEMBERS', 'BAN_MEMBERS']);
 
@@ -20,23 +20,23 @@ export class StarboardGetThresholdCommand extends Command {
      * @param { CommandArgs } commandArgs
      * @returns CommandResult
      */
-    public execute(commandArgs: CommandArgs): CommandResult {
+    public async execute(commandArgs: CommandArgs): Promise<CommandResult> {
         const { server, memberPerms, messageReply } = commandArgs;
 
         // Check for permissions first
         if (!this.hasPermissions(this.permissions, memberPerms)) {
-            this.sendNoPermissionsMessage(messageReply);
+            await this.sendNoPermissionsMessage(messageReply);
             return this.NO_PERMISSIONS_COMMANDRESULT;
         }
 
         const threshold = server.starboardSettings.getThreshold();
         // Check if threshold is set
         if (threshold === null) {
-            messageReply(this.generateNotSetEmbed());
+            await messageReply(this.generateNotSetEmbed());
             return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
         }
 
-        messageReply(this.generateValidEmbed(threshold));
+        await messageReply(this.generateValidEmbed(threshold));
         return this.COMMAND_SUCCESSFUL_COMMANDRESULT;
     }
 
@@ -45,13 +45,12 @@ export class StarboardGetThresholdCommand extends Command {
      *
      * @returns RichEmbed
      */
-    // eslint-disable-next-line class-methods-use-this
-    private generateNotSetEmbed(): RichEmbed {
-        const embed = new RichEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
-        embed.addField(StarboardGetThresholdCommand.EMBED_TITLE,
-            StarboardGetThresholdCommand.THRESHOLD_NOT_SET);
-
-        return embed;
+    private generateNotSetEmbed(): MessageEmbed {
+        return this.generateGenericEmbed(
+            StarboardGetThresholdCommand.EMBED_TITLE,
+            StarboardGetThresholdCommand.THRESHOLD_NOT_SET,
+            StarboardGetThresholdCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 
     /**
@@ -60,12 +59,11 @@ export class StarboardGetThresholdCommand extends Command {
      * @param  {number} threshold
      * @returns RichEmbed
      */
-    // eslint-disable-next-line class-methods-use-this
-    private generateValidEmbed(threshold: number): RichEmbed {
-        const embed = new RichEmbed().setColor(Command.EMBED_DEFAULT_COLOUR);
-        const msg = `The emoji threshold is currently ${threshold}.`;
-        embed.addField(StarboardGetThresholdCommand.EMBED_TITLE, msg);
-
-        return embed;
+    private generateValidEmbed(threshold: number): MessageEmbed {
+        return this.generateGenericEmbed(
+            StarboardGetThresholdCommand.EMBED_TITLE,
+            `The emoji threshold is currently ${threshold}.`,
+            StarboardGetThresholdCommand.EMBED_DEFAULT_COLOUR,
+        );
     }
 }

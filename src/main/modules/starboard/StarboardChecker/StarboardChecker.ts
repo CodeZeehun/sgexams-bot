@@ -1,5 +1,5 @@
 import {
- MessageReaction, User, Collection, TextChannel, Message,
+    MessageReaction, TextChannel,
 } from 'discord.js';
 import { StarboardSettings } from '../../../storage/StarboardSettings';
 import { StarboardCache } from '../../../storage/StarboardCache';
@@ -66,7 +66,7 @@ export abstract class StarboardChecker {
     public checkIfMessageExists(): boolean {
         const { starboardMessageCache } = StarboardCache;
         const msgId = this.reaction.message.id;
-        const guildId = this.reaction.message.guild.id;
+        const guildId = this.reaction.message.guild!.id;
 
         if (!starboardMessageCache.has(guildId)) {
             return false;
@@ -91,7 +91,7 @@ export abstract class StarboardChecker {
 
         const { starboardMessageCache } = StarboardCache;
         const msgId = this.reaction.message.id;
-        const guildId = this.reaction.message.guild.id;
+        const guildId = this.reaction.message.guild!.id;
 
         const serverCache = starboardMessageCache.get(guildId)!;
         const starboardMessageId = serverCache.getStarboardMessageId(msgId);
@@ -106,24 +106,29 @@ export abstract class StarboardChecker {
      * @param  {string} messageId
      * @returns Promise<boolean>
      */
-    public checkEmojiInStarboardMessage(messageId: string): Promise<boolean> {
-        return new Promise<boolean>((resolve): void => {
-            // Get channel, then message
-            const starboardChannel
-                = this.reaction.message.guild.channels.get(this.starboardSettings.getChannel()!);
-            (starboardChannel as TextChannel).fetchMessage(messageId)
-                .then((message: Message): void => {
-                    // Check if emoji that's on the starboard is the same as the reaction
-                    const content = message.content.split(' ');
-                    const regexEmote = new RegExp('<a?:(.+):(\\d+)>', 'g');
-                    const match = regexEmote.exec(content[1])!;
-                    const name = match[1];
-                    const id = match[2];
+    public async checkEmojiInStarboardMessage(messageId: string): Promise<boolean> {
+        // Get channel, then message
+        const starboardChannel = this.reaction.message.guild!.channels.resolve(
+                this.starboardSettings.getChannel()!,
+        );
+        const message = await (starboardChannel as TextChannel).messages.fetch(messageId);
 
-                    if (name === this.reaction.emoji.name
-                        && id === this.reaction.emoji.id) { resolve(true); } else resolve(false);
-                });
-        });
+        // Check if emoji that's on the starboard is the same as the reaction
+        const content = message.content.split(' ');
+        const regexEmote = new RegExp('<a?:(.+):(\\d+)>', 'g');
+        const match = regexEmote.exec(content[1])!;
+        if (!match) {
+            const { id } = this.reaction.message.guild!;
+            throw new Error(
+                `Starboard format not adhered to! Server: ${id}, Channel: ${starboardChannel!.id}, Message: ${messageId}`,
+            );
+        }
+
+        const { 1: name, 2: id } = match;
+        if (name === this.reaction.emoji.name && id === this.reaction.emoji.id)
+            return true;
+
+        return false;
     }
 
     /**
@@ -133,12 +138,7 @@ export abstract class StarboardChecker {
      * @returns Promise
      */
     protected async getNumberOfReactions(): Promise<number> {
-        return new Promise<number>((resolve): void => {
-            this.reaction.fetchUsers()
-                .then((users: Collection<string, User>): void => {
-                    const { size } = users;
-                    resolve(size);
-                });
-        });
+        const { size } = await this.reaction.users.fetch();
+        return size;
     }
 }

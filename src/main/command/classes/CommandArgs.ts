@@ -1,42 +1,35 @@
 import {
- Permissions, Collection, Emoji, Channel,
+    Permissions, Channel, GuildChannelManager, GuildEmojiManager, GuildMemberManager, RoleManager,
 } from 'discord.js';
 import { Server } from '../../storage/Server';
 
-/** This class contains the arguments for the Command class */
-export class CommandArgs {
-    public server: Server;
+/** This interface contains the arguments for the Command class */
+export interface CommandArgs {
+    server: Server;
 
-    public memberPerms: Permissions;
+    memberPerms: Readonly<Permissions>;
 
-    public messageReply: Function;
+    messageReply: Function;
 
-    public uptime: number | undefined;
+    deleteFunction?: Function;
 
-    public channels: Collection<string, Channel> | undefined;
+    emit?: Function;
 
-    public emojis: Collection<string, Emoji> | undefined;
+    uptime?: number | null;
 
-    public channel: Channel | undefined;
+    channels?: GuildChannelManager;
 
-    public userId: string | undefined;
+    emojis?: GuildEmojiManager;
 
-    public deleteFunction: Function | undefined;
+    members?: GuildMemberManager;
 
-    public constructor(server: Server, memberPerms: Permissions,
-                       messageReply: Function, uptime?: number,
-                       channels?: Collection<string, Channel>,
-                       emojis?: Collection<string, Emoji>,
-                       channel?: Channel, userId?: string,
-                       deleteFunction?: Function) {
-        this.server = server;
-        this.memberPerms = memberPerms;
-        this.uptime = uptime;
-        this.messageReply = messageReply;
-        this.channels = channels;
-        this.emojis = emojis;
-        this.channel = channel;
-        this.userId = userId;
-        this.deleteFunction = deleteFunction;
-    }
+    channel?: Channel;
+
+    userId?: string;
+
+    messageId?: string;
+
+    botId?: string;
+
+    roles?: RoleManager;
 }

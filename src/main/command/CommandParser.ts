@@ -14,16 +14,32 @@ import { StarboardGetChannelCommand } from './starboardcommands/StarboardGetChan
 import { StarboardGetEmojiCommand } from './starboardcommands/StarboardGetEmojiCommand';
 import { StarboardGetThresholdCommand } from './starboardcommands/StarboardGetThresholdCommand';
 import { StarboardSetThresholdCommand } from './starboardcommands/StarboardSetThresholdCommand';
-import { RotateImageCommand } from './misccommands/rotateimagecommands/RotateImageCommand';
+import { RotateImageCommand } from './misccommands/RotateImageCommand';
 import { CommandNamesAndDescriptions } from './classes/CommandNamesAndDescriptions';
 import { MsgCheckerHelpCommand } from './helpcommands/MsgCheckerHelpCommand';
 import { StarboardHelpCommand } from './helpcommands/StarboardHelpCommand';
 import { MiscCommandHelpCommand } from './helpcommands/MiscCommandHelpCommand';
-import { UptimeCheckCommand } from './misccommands/uptimecheckcommands/UptimeCheckCommand';
+import { UptimeCheckCommand } from './misccommands/UptimeCheckCommand';
 import { StarboardAddEmojiCommand } from './starboardcommands/StarboardAddEmojiCommand';
 import { StarboardRemoveEmojiCommand } from './starboardcommands/StarboardRemoveEmojiCommand';
-import { OkBoomerCommand } from './misccommands/okboomercommand/OkBoomerCommand';
-import { OkZoomerCommand } from './misccommands/okzoomercommand/OkZoomerCommand';
+import { OkBoomerCommand } from './misccommands/OkBoomerCommand';
+import { OkZoomerCommand } from './misccommands/OkZoomerCommand';
+import { WarnCommand } from './moderationcommands/WarnCommand';
+import { KickCommand } from './moderationcommands/KickCommand';
+import { BanCommand } from './moderationcommands/BanCommand';
+import { PurgeCommand } from './moderationcommands/PurgeCommand';
+import { ModerationHelpCommand } from './helpcommands/ModerationHelpCommand';
+import { UnbanCommand } from './moderationcommands/UnbanCommand';
+import { UnwarnCommand } from './moderationcommands/UnwarnCommand';
+import { SetWarnPunishmentsCommand } from './moderationcommands/SetWarnPunishmentsCommand';
+import { GetWarnPunishmentsCommand } from './moderationcommands/GetWarnPunishmentsCommand';
+import { SetModLogChannelCommand } from './moderationcommands/SetModLogChannelCommand';
+import { GetModLogChannelCommand } from './moderationcommands/GetModLogChannelCommand';
+import { ModLogsCommand } from './moderationcommands/ModLogsCommand';
+import { SetMuteRoleCommand } from './moderationcommands/SetMuteRoleCommand';
+import { GetMuteRoleCommand } from './moderationcommands/GetMuteRoleCommand';
+import { MuteCommand } from './moderationcommands/MuteCommand';
+import { UnmuteCommand } from './moderationcommands/UnmuteCommand';
 
 export class CommandParser {
     public static NO_SUCH_COMMAND = 'No such command!';
@@ -35,6 +51,7 @@ export class CommandParser {
             CommandNamesAndDescriptions.MISC_COMMANDS_LOWERCASE,
             CommandNamesAndDescriptions.STARBOARD_COMMANDS_LOWERCASE,
             CommandNamesAndDescriptions.HELP_COMMANDS_LOWERCASE,
+            CommandNamesAndDescriptions.MODERATION_COMMANDS_LOWERCASE,
         ));
 
     private content: string;
@@ -61,6 +78,12 @@ export class CommandParser {
     public isCommand(selfId: string): boolean {
         // Check if bot is mentioned as the 1st word
         if (!(new RegExp(`<@!?${selfId}>`).test(this.splittedContent[0]))) {
+            return false;
+        }
+
+        // Check length of splittedContent.
+        // 1 means only the bot was tagged; there's no command.
+        if (this.splittedContent.length === 1) {
             return false;
         }
 
@@ -141,12 +164,46 @@ export class CommandParser {
                 return new StarboardHelpCommand();
             case CommandNamesAndDescriptions.MISC_COMMAND_HELP_COMMAND_NAME.toLowerCase():
                 return new MiscCommandHelpCommand();
+            case CommandNamesAndDescriptions.MODERATION_HELP_COMMAND_NAME.toLowerCase():
+                return new ModerationHelpCommand();
             case CommandNamesAndDescriptions.UPTIME_CHECK_COMMAND_NAME.toLowerCase():
                 return new UptimeCheckCommand();
             case CommandNamesAndDescriptions.OKBOOMER_COMMAND_NAME.toLowerCase():
                 return new OkBoomerCommand(args);
             case CommandNamesAndDescriptions.OKZOOMER_COMMAND_NAME.toLowerCase():
                 return new OkZoomerCommand(args);
+            case CommandNamesAndDescriptions.WARN_COMMAND_NAME.toLowerCase():
+                return new WarnCommand(args);
+            case CommandNamesAndDescriptions.KICK_COMMAND_NAME.toLowerCase():
+                return new KickCommand(args);
+            case CommandNamesAndDescriptions.BAN_COMMAND_NAME.toLowerCase():
+                return new BanCommand(args, false);
+            case CommandNamesAndDescriptions.BANRM_COMMAND_NAME.toLowerCase():
+                return new BanCommand(args, true);
+            case CommandNamesAndDescriptions.MUTE_COMMAND_NAME.toLowerCase():
+                return new MuteCommand(args);
+            case CommandNamesAndDescriptions.PURGE_COMMAND_NAME.toLowerCase():
+                return new PurgeCommand(args);
+            case CommandNamesAndDescriptions.UNBAN_COMMAND_NAME.toLowerCase():
+                return new UnbanCommand(args);
+            case CommandNamesAndDescriptions.UNWARN_COMMAND_NAME.toLowerCase():
+                return new UnwarnCommand(args);
+            case CommandNamesAndDescriptions.UNMUTE_COMMAND_NAME.toLowerCase():
+                return new UnmuteCommand(args);
+            case CommandNamesAndDescriptions.SET_WARN_PUNISHMENTS_COMMAND_NAME.toLowerCase():
+                return new SetWarnPunishmentsCommand(args);
+            case CommandNamesAndDescriptions.GET_WARN_PUNISHMENTS_COMMAND_NAME.toLowerCase():
+                return new GetWarnPunishmentsCommand();
+            case CommandNamesAndDescriptions.SET_MODLOG_CHANNEL_COMMAND_NAME.toLowerCase():
+                return new SetModLogChannelCommand(args);
+            case CommandNamesAndDescriptions.GET_MODLOG_CHANNEL_COMMAND_NAME.toLowerCase():
+                return new GetModLogChannelCommand();
+            case CommandNamesAndDescriptions.MOD_LOGS_COMMAND_NAME.toLowerCase():
+                return new ModLogsCommand(args);
+            case CommandNamesAndDescriptions.SET_MUTE_ROLE_COMMAND_NAME.toLowerCase():
+                return new SetMuteRoleCommand(args);
+            case CommandNamesAndDescriptions.GET_MUTE_ROLE_COMMAND_NAME.toLowerCase():
+                return new GetMuteRoleCommand();
             default:
                 throw new NoSuchCommandError(CommandParser.NO_SUCH_COMMAND);
         }
